@@ -40,7 +40,7 @@ pub enum Kind {
     EOF,
 }
 
-mod lexen {
+pub mod lexen {
     use super::*;
 
     #[derive(Debug)]
@@ -142,6 +142,7 @@ mod lexen {
         fn previous(&self) -> Option<char> {
             self.content[self.current - 1..].chars().next()
         }
+
         fn advance(&mut self) -> Option<char> {
             // self.content.chars().nth();
             let ch: Option<char> = self.content[self.current..].chars().next();
@@ -150,11 +151,25 @@ mod lexen {
         }
 
         fn read_string(&mut self) {
-            todo!()
+            while let Some(pat) = self.peek() {
+                self.advance();
+                if pat == 'x' {
+                    break;
+                }
+            }
+            let s: String = (&self.content[self.start + 1..self.current - 1]).to_string();
+            self.tokens.push(Token {
+                kind: Kind::String(s),
+                lexeme: (&self.content[self.start..self.current]).to_string(),
+                line: self.line,
+            });
         }
 
         fn read_number(&mut self) {
             let mut number = String::new();
+            if let Some(prev) = self.previous() {
+                number.push(prev);
+            }
             // integer part
             while let Some(pat) = self.peek() {
                 if pat.is_digit(10) {
@@ -206,7 +221,7 @@ mod lexen {
                 }
             }
 
-            if number.ends_with("(-|+)") {
+            if number.ends_with("+") || number.ends_with("-") {
                 panic!("unknown sequence {number} found at {}", self.line);
             }
 
