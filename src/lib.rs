@@ -25,6 +25,16 @@ pub struct Token {
     line: u32,
 }
 
+impl Token {
+    pub fn new(token_kind: Kind, str_lexeme: String, line_num: u32) -> Self {
+        Self {
+            kind: token_kind,
+            lexeme: str_lexeme,
+            line: line_num,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Kind {
     BeginArray,     // [
@@ -69,11 +79,8 @@ pub mod lexen {
                 self.start();
             }
 
-            self.tokens.push(Token {
-                kind: Kind::EOF,
-                lexeme: "".to_string(),
-                line: self.line,
-            });
+            self.tokens
+                .push(Token::new(Kind::EOF, "".to_string(), self.line));
 
             // return value
             return self.tokens.clone();
@@ -86,48 +93,62 @@ pub mod lexen {
                         panic!("no char found.");
                     }
                 }
-
-                Some(xx) => match xx {
-                    '{' => self.tokens.push(Token {
-                        kind: Kind::BeginObject,
-                        lexeme: xx.to_string(),
-                        line: self.line,
-                    }),
-                    '[' => self.tokens.push(Token {
-                        kind: Kind::BeginArray,
-                        lexeme: xx.to_string(),
-                        line: self.line,
-                    }),
-                    '}' => self.tokens.push(Token {
-                        kind: Kind::EndObject,
-                        lexeme: xx.to_string(),
-                        line: self.line,
-                    }),
-                    ']' => self.tokens.push(Token {
-                        kind: Kind::EndArray,
-                        lexeme: xx.to_string(),
-                        line: self.line,
-                    }),
-                    ':' => self.tokens.push(Token {
-                        kind: Kind::NameSeparator,
-                        lexeme: xx.to_string(),
-                        line: self.line,
-                    }),
-                    ',' => self.tokens.push(Token {
-                        kind: Kind::ValueSeparator,
-                        lexeme: xx.to_string(),
-                        line: self.line,
-                    }),
-                    '"' => self.read_string(),
-                    '-' | '0'..='9' => self.read_number(), // numbers may be -ve
-                    't' | 'f' | 'n' => self.read_literal(),
-                    '\t' | ' ' => _ = self.advance(),
-                    '\r' | '\n' => {
-                        self.advance();
-                        self.line += 1;
+                Some(xx) => {
+                    println!("{xx}");
+                    match xx {
+                        '{' => self.tokens.push(Token {
+                            kind: Kind::BeginObject,
+                            lexeme: xx.to_string(),
+                            line: self.line,
+                        }),
+                        '[' => self.tokens.push(Token {
+                            kind: Kind::BeginArray,
+                            lexeme: xx.to_string(),
+                            line: self.line,
+                        }),
+                        '}' => self.tokens.push(Token {
+                            kind: Kind::EndObject,
+                            lexeme: xx.to_string(),
+                            line: self.line,
+                        }),
+                        ']' => self.tokens.push(Token {
+                            kind: Kind::EndArray,
+                            lexeme: xx.to_string(),
+                            line: self.line,
+                        }),
+                        ':' => self.tokens.push(Token {
+                            kind: Kind::NameSeparator,
+                            lexeme: xx.to_string(),
+                            line: self.line,
+                        }),
+                        ',' => self.tokens.push(Token {
+                            kind: Kind::ValueSeparator,
+                            lexeme: xx.to_string(),
+                            line: self.line,
+                        }),
+                        '"' => self.read_string(),
+                        '-' | '0'..='9' => self.read_number(), // numbers may be -ve
+                        't' | 'f' | 'n' => self.read_literal(),
+                        '\t' | ' ' => _ = self.advance(),
+                        '\r' | '\n' => {
+                            self.advance();
+                            self.line += 1;
+                        }
+                        _ => {
+                            self.dump();
+                            panic!("unknown char={xx} found at {}", self.line);
+                        }
                     }
-                    _ => todo!(),
-                },
+                }
+            }
+        }
+
+        fn dump(&self) {
+            println!("Dumping. {} items", self.tokens.len());
+            let mut idx = 0;
+            while let Some(pat) = self.tokens.get(idx) {
+                println!("{:?}", pat);
+                idx += 1
             }
         }
 

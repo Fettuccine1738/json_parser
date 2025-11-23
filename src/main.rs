@@ -1,3 +1,4 @@
+use json_parser::Token;
 use json_parser::lexen;
 use json_parser::lexen::Lexer;
 use json_parser::read_file;
@@ -13,5 +14,12 @@ fn main() {
     };
 
     println!("{}", read);
-    let lexer: Lexer = Lexer::new(read);
+    let mut lexer: Lexer = Lexer::new(read);
+    let tokens: Vec<Token> = lexer.lex();
+
+    let mut idx = 0;
+    while let Some(pat) = tokens.get(idx) {
+        println!("{:?}", pat);
+        idx += 1
+    }
 }
