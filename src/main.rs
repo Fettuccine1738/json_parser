@@ -1,5 +1,5 @@
+#![allow(dead_code)]
 use json_parser::Token;
-use json_parser::lexen;
 use json_parser::lexen::Lexer;
 use json_parser::read_file;
 
@@ -11,10 +11,9 @@ const SAMPLE_ARRAY_FILE: &str = "array.txt";
 fn main() {
     let read = match read_file(SAMPLE_ARRAY_FILE) {
         Ok(suc) => suc,
-        Err(err) =>
-        // eprintln!("file read failure, {}", err);
-        {
-            "error".to_string()
+        Err(err) => {
+            eprintln!("file read failure, {}", err);
+            return;
         }
     };
 
