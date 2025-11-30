@@ -213,8 +213,6 @@ pub mod lexen {
                 if pat.is_digit(10) {
                     number.push(pat);
                     self.advance();
-                } else if pat == '.' {
-                    break;
                 } else if pat.is_ascii_whitespace() {
                     self.skip_whitespace();
                 } else {
@@ -234,8 +232,7 @@ pub mod lexen {
                         exp = true;
                         break;
                     } else {
-                        self.dump();
-                        panic!("unknown char {pat} found at {}", self.line);
+                        break;
                     }
                 }
             }
