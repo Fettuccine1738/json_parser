@@ -16,10 +16,8 @@ fn main() {
     println!("{}", read);
     let mut lexer: Lexer = Lexer::new(read);
     let tokens: Vec<Token> = lexer.lex();
-
-    let mut idx = 0;
-    while let Some(pat) = tokens.get(idx) {
-        println!("{:?}", pat);
-        idx += 1
+    // lexer.dump();
+    for t in &tokens {
+        println!("{:?}", t);
     }
 }

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::fs;
 
 #[derive(Debug)]
@@ -18,20 +19,18 @@ pub fn read_file(filepath: &str) -> Result<String, std::io::Error> {
     Ok(file_content)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Token {
     kind: Kind,
-    lexeme: String,
     line: u32,
+    // lexeme: String, future use: cool to see what we actually consumed.
 }
 
-impl Token {
-    pub fn new(token_kind: Kind, str_lexeme: String, line_num: u32) -> Self {
-        Self {
-            kind: token_kind,
-            lexeme: str_lexeme,
-            line: line_num,
-        }
+impl fmt::Debug for Token {
+    // add code here
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Use `self.number` to refer to each positional data point.
+        write!(f, "Token: (kind{:?}, line{})", self.kind, self.line)
     }
 }
 
@@ -49,6 +48,14 @@ pub enum Kind {
     Number(f64),    // number
     EOF,
 }
+//
+// impl fmt::Debug for Kind {
+// // add code here
+// fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+// // Use `self.number` to refer to each positional data point.
+// write!(f, "{:?}", self)
+// }
+// }
 
 pub mod lexen {
     use super::*;
@@ -72,68 +79,45 @@ pub mod lexen {
                 tokens: Vec::new(),
             }
         }
-
-        pub fn lex(&mut self) -> Vec<Token> {
-            while self.not_at_end() {
-                self.start = self.current;
-                self.start();
-            }
-
-            self.tokens
-                .push(Token::new(Kind::EOF, "".to_string(), self.line));
-
-            // return value
-            return self.tokens.clone();
-        }
-
         fn start(&mut self) {
             match self.advance() {
                 None => {
                     if self.not_at_end() {
+                        self.dump();
                         panic!("no char found.");
                     }
                 }
                 Some(xx) => {
-                    println!("{xx}");
+                    // self.dump();
                     match xx {
                         '{' => self.tokens.push(Token {
                             kind: Kind::BeginObject,
-                            lexeme: xx.to_string(),
                             line: self.line,
                         }),
                         '[' => self.tokens.push(Token {
                             kind: Kind::BeginArray,
-                            lexeme: xx.to_string(),
                             line: self.line,
                         }),
                         '}' => self.tokens.push(Token {
                             kind: Kind::EndObject,
-                            lexeme: xx.to_string(),
                             line: self.line,
                         }),
                         ']' => self.tokens.push(Token {
                             kind: Kind::EndArray,
-                            lexeme: xx.to_string(),
                             line: self.line,
                         }),
                         ':' => self.tokens.push(Token {
                             kind: Kind::NameSeparator,
-                            lexeme: xx.to_string(),
                             line: self.line,
                         }),
                         ',' => self.tokens.push(Token {
                             kind: Kind::ValueSeparator,
-                            lexeme: xx.to_string(),
                             line: self.line,
                         }),
                         '"' => self.read_string(),
                         '-' | '0'..='9' => self.read_number(), // numbers may be -ve
                         't' | 'f' | 'n' => self.read_literal(),
-                        '\t' | ' ' => _ = self.advance(),
-                        '\r' | '\n' => {
-                            self.advance();
-                            self.line += 1;
-                        }
+                        '\r' | '\t' | ' ' | '\n' => self.skip_whitespace(),
                         _ => {
                             self.dump();
                             panic!("unknown char={xx} found at {}", self.line);
@@ -143,13 +127,44 @@ pub mod lexen {
             }
         }
 
-        fn dump(&self) {
-            println!("Dumping. {} items", self.tokens.len());
-            let mut idx = 0;
-            while let Some(pat) = self.tokens.get(idx) {
-                println!("{:?}", pat);
-                idx += 1
+        fn skip_whitespace(&mut self) {
+            while self.not_at_end() {
+                match self.peek() {
+                    Some('\r' | '\t' | ' ') => {
+                        self.advance();
+                    }
+                    Some('\n') => {
+                        self.line += 1;
+                        self.advance();
+                    }
+                    _ => {
+                        break;
+                    }
+                }
             }
+        }
+
+        pub fn dump(&self) {
+            println!("Dumping. {} items", self.tokens.len());
+            for token in &self.tokens {
+                println!("TOKEN => kind: {:?}, {}", token.kind, token.line);
+            }
+        }
+
+        pub fn lex(&mut self) -> Vec<Token> {
+            while self.not_at_end() {
+                self.skip_whitespace();
+                self.start = self.current;
+                self.start();
+            }
+
+            self.tokens.push(Token {
+                kind: Kind::EOF,
+                line: self.line,
+            });
+
+            // return value
+            return self.tokens.clone();
         }
 
         fn not_at_end(&self) -> bool {
@@ -172,18 +187,20 @@ pub mod lexen {
         }
 
         fn read_string(&mut self) {
+            let mut s: String = String::new();
             while let Some(pat) = self.peek() {
                 self.advance();
-                if pat == 'x' {
+                if pat == '"' {
+                    self.tokens.push(Token {
+                        kind: Kind::String(s),
+                        line: self.line,
+                        // lexeme: (&self.content[self.start..self.current]).to_string(),
+                    });
                     break;
+                } else {
+                    s.push(pat);
                 }
             }
-            let s: String = (&self.content[self.start + 1..self.current - 1]).to_string();
-            self.tokens.push(Token {
-                kind: Kind::String(s),
-                lexeme: (&self.content[self.start..self.current]).to_string(),
-                line: self.line,
-            });
         }
 
         fn read_number(&mut self) {
@@ -198,8 +215,10 @@ pub mod lexen {
                     self.advance();
                 } else if pat == '.' {
                     break;
+                } else if pat.is_ascii_whitespace() {
+                    self.skip_whitespace();
                 } else {
-                    panic!("unknown char {pat} found at {}", self.line);
+                    break;
                 }
             }
 
@@ -215,6 +234,7 @@ pub mod lexen {
                         exp = true;
                         break;
                     } else {
+                        self.dump();
                         panic!("unknown char {pat} found at {}", self.line);
                     }
                 }
@@ -237,18 +257,21 @@ pub mod lexen {
                         number.push(pat);
                         self.advance();
                     } else {
+                        self.dump();
                         panic!("unknown char {pat} found at {}", self.line);
                     }
                 }
             }
 
             if number.ends_with("+") || number.ends_with("-") {
+                self.dump();
                 panic!("unknown sequence {number} found at {}", self.line);
             }
 
             let value = match number.parse::<f64>() {
                 Ok(f) => f,
                 Err(err) => {
+                    self.dump();
                     panic!(
                         "unable to parse {} @ ln{} with error {}",
                         number, self.line, err
@@ -258,34 +281,30 @@ pub mod lexen {
 
             self.tokens.push(Token {
                 kind: Kind::Number(value),
-                lexeme: number,
                 line: self.line,
             });
         }
 
         fn read_literal(&mut self) {
-            let mut s: String = String::new();
-            while let Some(ch @ 'a'..='z') = self.peek() {
+            while let Some('a'..='z') = self.peek() {
                 self.advance();
-                s.push(ch);
             }
 
+            let s = (&self.content[self.start..self.current]).to_string();
             let kd = match s.as_str() {
                 "true" => Kind::Boolean(true),
                 "false" => Kind::Boolean(false),
                 "null" => Kind::Null,
-                _ => panic!("unknown literal `{s}` @ line{}", self.line),
+                _ => {
+                    self.dump();
+                    panic!("unknown literal `{s}` @ line{}", self.line);
+                }
             };
 
             self.tokens.push(Token {
                 kind: kd,
-                lexeme: s,
                 line: self.line,
             });
-        }
-
-        fn is_digit(c: char) -> bool {
-            return '0' <= c && c <= '9';
         }
     }
 }
