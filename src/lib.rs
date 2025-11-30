@@ -2,16 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 
-#[derive(Debug)]
-enum Json {
-    Null,
-    Boolean(bool),
-    Number(f64),
-    Strings(String),
-    Array(Vec<Json>),
-    Object(Box<HashMap<String, Json>>),
-}
-
+mod parsen;
 // read a file and return a string
 pub fn read_file(filepath: &str) -> Result<String, std::io::Error> {
     // ? propagates error
@@ -26,6 +17,16 @@ pub struct Token {
     // lexeme: String, future use: cool to see what we actually consumed.
 }
 
+impl Token {
+    pub fn get_line(&self) -> u32 {
+        self.line
+    }
+
+    pub fn get_kind(&self) -> Kind {
+        self.kind.clone()
+    }
+}
+
 impl fmt::Debug for Token {
     // add code here
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -34,7 +35,7 @@ impl fmt::Debug for Token {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Kind {
     BeginArray,     // [
     BeginObject,    // {
@@ -48,6 +49,21 @@ pub enum Kind {
     Number(f64),    // number
     EOF,
 }
+
+impl Kind {
+    pub fn to_Json(self) -> parsen::Json {
+        match self {
+            Kind::Boolean(b) => parsen::Json::Boolean(b),
+            Kind::String(s) => parsen::Json::Strings(s),
+            Kind::Number(f) => parsen::Json::Number(f),
+            Kind::Null => parsen::Json::Null,
+            _ => {
+                panic!("");
+            }
+        }
+    }
+}
+
 //
 // impl fmt::Debug for Kind {
 // // add code here
