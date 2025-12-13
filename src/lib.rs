@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 
-mod parsen;
-// read a file and return a string
+pub mod parsen;
+
 pub fn read_file(filepath: &str) -> Result<String, std::io::Error> {
     // ? propagates error
     let file_content = fs::read_to_string(filepath)?;
@@ -51,7 +51,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub fn to_Json(self) -> parsen::Json {
+    pub fn to_json(self) -> parsen::Json {
         match self {
             Kind::Boolean(b) => parsen::Json::Boolean(b),
             Kind::String(s) => parsen::Json::Strings(s),
@@ -95,6 +95,7 @@ pub mod lexen {
                 tokens: Vec::new(),
             }
         }
+
         fn start(&mut self) {
             match self.advance() {
                 None => {
@@ -202,11 +203,12 @@ pub mod lexen {
             ch
         }
 
+        // TODO: handle escape sequences.
         fn read_string(&mut self) {
             let mut s: String = String::new();
             while let Some(pat) = self.peek() {
                 self.advance();
-                if pat == '"' {
+                if pat == '"' { 
                     self.tokens.push(Token {
                         kind: Kind::String(s),
                         line: self.line,
@@ -259,11 +261,8 @@ pub mod lexen {
                     self.advance();
                 }
                 while let Some(pat) = self.peek() {
-                    if pat.is_whitespace() {
-                        if pat == '\n' || pat == '\r' {
-                            self.line += 1;
-                        }
-                        self.advance();
+                    if pat.is_ascii_whitespace() {
+                        self.skip_whitespace();
                         break;
                     }
                     if pat.is_digit(10) {
@@ -303,8 +302,8 @@ pub mod lexen {
                 self.advance();
             }
 
-            let s = (&self.content[self.start..self.current]).to_string();
-            let kd = match s.as_str() {
+            let s = &self.content[self.start..self.current];
+            let kd = match s {
                 "true" => Kind::Boolean(true),
                 "false" => Kind::Boolean(false),
                 "null" => Kind::Null,

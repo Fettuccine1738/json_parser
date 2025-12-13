@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use core::panic;
+
 use crate::HashMap;
 use crate::Kind;
 use crate::Token;
@@ -14,10 +16,78 @@ pub enum Json {
     Object(Box<HashMap<String, Json>>),
 }
 
+impl Json {
+     pub fn isString(&self) -> bool {
+         return matches!(self, Json::Strings(_))
+     }
+ 
+     pub fn isBoolean(&self) -> bool {
+         return matches!(self, Json::Boolean(_))
+     }
+ 
+     pub fn isNumber(&self) -> bool {
+         return matches!(self, Json::Boolean(_))
+     }
+
+     pub fn isArray(&self) -> bool {
+         return matches!(self, Json::Array(_))
+     }
+ 
+     pub fn isObject(&self) -> bool {
+         return matches!(self, Json::Object(_))
+     }
+ 
+     pub fn isNullOrEmptyNode(&self) -> bool {
+         return matches!(self, Json::Null)
+     }
+ 
+     pub fn asText(&self) -> String {
+         if matches!(self, Json::Boolean(_) | Json::Strings(_) | Json::Number(_)) {
+             match self {
+                 Json::Boolean(b) => b.to_string(),
+                 Json::Number(num) => num.to_string(),  
+                 Json::Strings(st) => st.clone(),  
+                 Json::Null => "null".to_string(),  
+                 _ => panic!("only primitive types can be converted to text")
+             }
+         } else {
+             "".to_string()
+         }
+     }
+ 
+    pub fn path(&self, name: &str) -> &Json {
+            match self {
+            Json::Object(map) => {
+                if let Some(val ) = map.get(name) {
+                    val
+                } else {
+                    &Json::Null
+                }
+            }
+            _ => return &Json::Null,
+        }
+     }
+ 
+     pub fn atIndex(&self, index: usize) -> &Json {
+        match self {
+            Json::Array(vec) => {
+                if let Some(json) = vec.get(index) {
+                    json
+                } else {
+                    &Json::Null
+                }
+            }
+            _ => return &Json::Null,
+        }
+     }
+ }
+
+
+
 /// Parsers job is to consume tokens, make sure that they adhere to the
 /// language's grammar and produces a Json result.
 #[derive(Debug)]
-struct Parser {
+pub struct Parser {
     tokens: Vec<Token>,
     pub start: usize,
     pub current: usize,
@@ -37,19 +107,16 @@ impl Parser {
         return Parser::new(lexer.lex());
     }
 
-    // pub fn parse(&mut self) -> crate::parse::Json {
-    //
-    // }
-    //
-    // object = begin-object [ member *( value-separator member ) ]
-    //  end-object
+    // member = string name-separator value
     pub fn parse(&mut self) -> crate::parsen::Json {
         match self.peek() {
             Some(x) => match x.get_kind() {
                 Kind::BeginObject => self.parse_object(),
                 Kind::BeginArray => self.parse_array(),
                 Kind::String(_) | Kind::Boolean(_) | Kind::Null | Kind::Number(_) => {
-                    self.resolve_type()
+                    let json = self.resolve_type();
+                    self.advance();
+                    return json;
                 }
                 _ => panic!(),
             },
@@ -57,49 +124,34 @@ impl Parser {
         }
     }
 
-    pub fn parse_object(&mut self) -> crate::parsen::Json {
-        let mut heap_map = Box::new(HashMap::<String, Json>::new());
-        if self.expect_to_find(Kind::BeginObject) {
-            self.advance();
-        } else {
-            panic!("unexpected token {:?}", self.peek());
-        } // matched {
-        //Account { name, language, .. } => {
-        // ui.greet(&name, &language);
-        // ui.show_settings(&account);  // error: borrow of moved value: `account`
-
-        while self.not_exhausted() {
-            // TODO: extract string from the Token
-            let s = String::from("ladkfla");
-            self.advance(); // conusme name
-            self.consume(Kind::NameSeparator); // consume separator 
-            let json = self.parse();
-            heap_map.insert(s, json);
-        }
-        self.consume(Kind::EndObject);
-        Json::Object(heap_map)
-    }
-
-    pub fn parse_array(&mut self) -> crate::parsen::Json {
-        let mut v = Vec::<crate::parsen::Json>::new();
-        if self.expect_to_find(Kind::BeginArray) {
-            self.advance();
-        } else {
-            panic!("unexpected token {:?}", self.peek());
-        } // matched [
+    // object = begin-object [ member *( value-separator member ) ]
+    //  end-object
+    fn parse_object(&mut self) -> crate::parsen::Json {
+        let mut heap_map: Box<HashMap<String, Json>> = Box::new(HashMap::<String, Json>::new());
+        // consume expected {
+        self.consume(Kind::BeginObject);
 
         while self.not_exhausted() {
             match self.peek() {
-                // match an object
                 Some(ref token) => {
-                    if token.get_kind().clone() != Kind::EndArray
-                        || token.get_kind().clone() != Kind::ValueSeparator
-                    {
-                        v.push(self.resolve_type());
-                        self.advance();
-                    };
-                }
-                None => panic!("Exhausted values parsing array."),
+                    if token.get_kind().clone() == Kind::EndObject {
+                        break;
+                    } else {
+                        // we must find a string here.
+                        match token.get_kind() {
+                            Kind::String(s) => {
+                                let s = s.clone();
+                                self.advance();
+                                self.consume(Kind::NameSeparator); 
+                                
+                                let json: Json = self.parse();
+                                heap_map.insert(s, json);
+                            }
+                            _ => panic!("expected string as key found {:?} instead", token.get_kind()),
+                        }
+                    }
+                },
+                None => panic!("Exhausted values parsing object."),
             }
 
             if !self.expect_to_find(Kind::ValueSeparator) {
@@ -109,11 +161,37 @@ impl Parser {
             }
         }
 
-        if self.expect_to_find(Kind::EndArray) {
-            self.advance();
-        } else {
-            panic!("unexpected token {:?}", self.peek());
+        self.consume(Kind::EndObject);
+        Json::Object(heap_map)
+    }
+
+    // array = begin-array [ value *( value-separator value ) ] end-array
+    // value = false / null / true / object / array / number / string
+    fn parse_array(&mut self) -> crate::parsen::Json {
+        let mut v = Vec::<crate::parsen::Json>::new();
+        self.consume(Kind::BeginArray);
+
+        while self.not_exhausted() {
+            match self.peek() {
+                Some(ref token) => {
+                    if token.get_kind().clone() == Kind::EndArray {
+                        break;
+                    } else {
+                        let json: Json = self.parse();
+                        v.push(json);
+                    };
+                }
+                None => panic!("Exhausted values parsing array."),
+            }
+
+            // if value separator not found, stop parsing array
+            if !self.expect_to_find(Kind::ValueSeparator) {
+                break;
+            } else {
+                self.advance(); 
+            }
         }
+        self.consume(Kind::EndArray);
         Json::Array(v)
     }
 
@@ -133,7 +211,8 @@ impl Parser {
     }
 
     fn consume(&mut self, check: Kind) {
-        if self.expect_to_find(check) {
+        let b: bool = self.expect_to_find(check);
+        if b {
             self.advance();
         } else {
             panic!("unexpected token {:?}", self.peek());
@@ -171,8 +250,5 @@ impl Parser {
         self.current += 1;
         ch
     }
-
-    // member = string name-separator value
-    // value = false / null / true / object / array / number / string
-    // array = begin-array [ value *( value-separator value ) ] end-array
 }
+
