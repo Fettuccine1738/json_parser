@@ -27,23 +27,23 @@ fn main() {
 
     let mut parser = Parser::new(tokens);
     let json = parser.parse();
-    println!("json.isArray = {}", json.isArray());
-    println!("json.isObject = {}", json.isObject());
-    println!("json.isNull = {}", json.isNullOrEmptyNode());
-    println!("json.isNumber = {}", json.isNumber());
-    println!("json.isString = {}", json.isString());
-    println!("json.isBoolean = {}", json.isBoolean());
+    println!("json.isArray = {}", json.is_array());
+    println!("json.isObject = {}", json.is_object());
+    println!("json.isNull = {}", json.is_null_or_empty());
+    println!("json.isNumber = {}", json.is_number());
+    println!("json.isString = {}", json.is_string());
+    println!("json.isBoolean = {}", json.is_boolean());
 
-    let s: String = json.atIndex(0).path("precision").asText();
+    let s: String = json.at_index(0).path("precision").as_text();
     assert_eq!(s, "zip");
 
-    let latitude: String = json.atIndex(0).path("Latitude").asText();
-    let longitude: String = json.atIndex(0).path("Longitude").asText();
-    let address: String = json.atIndex(0).path("Address").asText();
-    let city: String = json.atIndex(0).path("City").asText();
-    let state: String = json.atIndex(0).path("State").asText();
-    let zip: String = json.atIndex(0).path("Zip").asText();
-    let country: String = json.atIndex(0).path("Country").asText();
+    let latitude: String = json.at_index(0).path("Latitude").as_text();
+    let longitude: String = json.at_index(0).path("Longitude").as_text();
+    let address: String = json.at_index(0).path("Address").as_text();
+    let city: String = json.at_index(0).path("City").as_text();
+    let state: String = json.at_index(0).path("State").as_text();
+    let zip: String = json.at_index(0).path("Zip").as_text();
+    let country: String = json.at_index(0).path("Country").as_text();
 
     println!("latitude = {}", latitude);
     println!("longitude = {}", longitude);

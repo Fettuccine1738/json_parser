@@ -17,31 +17,31 @@ pub enum Json {
 }
 
 impl Json {
-     pub fn isString(&self) -> bool {
+     pub fn is_string(&self) -> bool {
          return matches!(self, Json::Strings(_))
      }
  
-     pub fn isBoolean(&self) -> bool {
+     pub fn is_boolean(&self) -> bool {
          return matches!(self, Json::Boolean(_))
      }
  
-     pub fn isNumber(&self) -> bool {
+     pub fn is_number(&self) -> bool {
          return matches!(self, Json::Boolean(_))
      }
 
-     pub fn isArray(&self) -> bool {
+     pub fn is_array(&self) -> bool {
          return matches!(self, Json::Array(_))
      }
  
-     pub fn isObject(&self) -> bool {
+     pub fn is_object(&self) -> bool {
          return matches!(self, Json::Object(_))
      }
  
-     pub fn isNullOrEmptyNode(&self) -> bool {
+     pub fn is_null_or_empty(&self) -> bool {
          return matches!(self, Json::Null)
      }
  
-     pub fn asText(&self) -> String {
+     pub fn as_text(&self) -> String {
          if matches!(self, Json::Boolean(_) | Json::Strings(_) | Json::Number(_)) {
              match self {
                  Json::Boolean(b) => b.to_string(),
@@ -68,7 +68,7 @@ impl Json {
         }
      }
  
-     pub fn atIndex(&self, index: usize) -> &Json {
+     pub fn at_index(&self, index: usize) -> &Json {
         match self {
             Json::Array(vec) => {
                 if let Some(json) = vec.get(index) {
