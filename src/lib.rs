@@ -206,9 +206,10 @@ pub mod lexen {
         // TODO: handle escape sequences.
         fn read_string(&mut self) {
             let mut s: String = String::new();
+
             while let Some(pat) = self.peek() {
                 self.advance();
-                if pat == '"' { 
+                if pat == '"' {
                     self.tokens.push(Token {
                         kind: Kind::String(s),
                         line: self.line,
@@ -216,9 +217,39 @@ pub mod lexen {
                     });
                     break;
                 } else {
-                    s.push(pat);
+                    let st = self.resolve_string(pat);
+                    s.push_str(&st);
                 }
             }
+        }
+
+        fn resolve_string(&mut self, ch: char) -> String {
+            if ch == '\\' {
+                if let Some(pat) = self.peek() {
+                    self.advance();
+                    match pat {
+                        'b' => return r"\b".to_string(),
+                        't' => return r"\t".to_string(),
+                        'n' => return r"\n".to_string(),
+                        'f' => return r"\f".to_string(),
+                        'r' => return r"\r".to_string(),
+                        'u' | 'U' => {
+                            // consume next hex didigt
+                            let hex = &(self.content[self.current..self.current + 4]);
+                            self.current += 4; // update idx;
+                            let code_pt = u32::from_str_radix(hex, 16)
+                                .expect("unable to convert hex codes {:?}");
+                            if let Some(cc) = char::from_u32(code_pt) {
+                                return cc.to_string();
+                            } else {
+                                panic!("Error converting code_pt {}", code_pt);
+                            }
+                        }
+                        _ => return pat.to_string(),
+                    }
+                }
+            }
+            ch.to_string()
         }
 
         fn read_number(&mut self) {

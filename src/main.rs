@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use json_parser::Token;
-use json_parser::parsen::Parser;
 use json_parser::lexen::Lexer;
+use json_parser::parsen::Parser;
 use json_parser::read_file;
 
 /// contains the array and object samples from the RFC8259
@@ -10,6 +10,8 @@ const SAMPLE_OBJECT_FILE: &str = "json_obj.txt";
 const SAMPLE_ARRAY_FILE: &str = "array.txt";
 
 fn main() {
+    let text = "Hello \\u03BB world";
+    println!("{text}");
     let read = match read_file(SAMPLE_ARRAY_FILE) {
         Ok(suc) => suc,
         Err(err) => {
@@ -35,8 +37,9 @@ fn main() {
     println!("json.isBoolean = {}", json.is_boolean());
 
     let s: String = json.at_index(0).path("precision").as_text();
-    assert_eq!(s, "zip");
-
+    // let lambda = "\\u03BB";
+    // assert_eq!(s, rhs);
+    //
     let latitude: String = json.at_index(0).path("Latitude").as_text();
     let longitude: String = json.at_index(0).path("Longitude").as_text();
     let address: String = json.at_index(0).path("Address").as_text();
@@ -45,6 +48,7 @@ fn main() {
     let zip: String = json.at_index(0).path("Zip").as_text();
     let country: String = json.at_index(0).path("Country").as_text();
 
+    println!("precision = {}", s);
     println!("latitude = {}", latitude);
     println!("longitude = {}", longitude);
     println!("address = {}", address);

@@ -1,6 +1,6 @@
 [
         {
-           "precision": "zip",
+           "precision": "zip\u03BB",
            "Latitude":  37.7668,
            "Longitude": -122.3959,
            "Address":   "",
